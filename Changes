@@ -1,8 +1,28 @@
 Revision history for Perl extension Date::PeriodParser.
 
-0.02  Sat Jun  1 10:14:50 BST 2002
-    - Fix dependencies.
+0.05  Sat Mar  3 15:33:33 PST 2002 (3/3 3:33 - you can't make this stuff up!)
+	- Several patches from Michael Hendrix incorporated (thanks Michael!)
+		- "this week"/"this month"/"this year" support
+		- "last week"/"last month"/"last year" support
+		- "month year" (e.g., "May 2005", "Dec 1990") support
+		- Conditional loading of Lingua::EN::Words2Nums
+	- "next week"/"next month"/"next year" support
+	- Added explicit dependencies and documented them
+	- Converted directory layout to standard layout (lib/Date/PeriodParser.pm
+	  instead of PeriodParser.pm at the toplevel)
+	- Corrected the changelog to actually reflect the changes that happened.
+
+0.04  Wed Aug 31              2005
+	- Added pod.t and pod-coverage.t
+	- Privatized methods not needed by external modules
+	- Added comments
+	- Slight expansion of documentation
+
+0.03  Mon Feb  7              2005	
     - Replace tests with more extensive Test::More-based tests.
+	- Changed date math to use Date::Calc.
+	- Added global Test::More-compatible debugging.
+	- Support for vague "now"
     - fix 'night' to be a non-overlapping period with 'morning'
       (is now 21:00:00 to 05:59:59 the next day).
     - better support for odd but acceptable wording ("the day
@@ -10,6 +30,12 @@ Revision history for Perl extension Date::PeriodParser.
     - support for "in the" (particularly, support for "in the
       morning/afternoon" meaning "tomorrow morning/afternoon" 
       if it's not currently morning).
+	- Added non-stub docs, including a description of what's supported.
+ 
+0.02  Sat Jun  1 10:14:50 BST 2002
+    - Fix dependencies.
+	- Fix test harness.
+	- Add Lingua::EN::Words2Nums dependency.
 
 0.01  Fri Apr 12 21:44:22 2002
 	- original version; created by h2xs 1.21 with options

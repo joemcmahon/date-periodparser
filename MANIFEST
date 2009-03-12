@@ -1,7 +1,8 @@
 Changes
+lib/Date/PeriodParser.pm
 Makefile.PL
 MANIFEST
-PeriodParser.pm
+META.yml			Module meta-data (added by MakeMaker)
 README
 t/01now.t
 t/02recent.t
@@ -12,6 +13,10 @@ t/06ago.t
 t/07junk.t
 t/08now.t
 t/09vague.t
-t/pod.t
+t/helpers.pl
+t/month-year.t
+t/no-words2nums.t
 t/pod-coverage.t
-META.yml                                 Module meta-data (added by MakeMaker)
+t/pod.t
+t/this-month.t
+t/this-week.t
