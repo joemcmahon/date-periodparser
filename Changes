@@ -1,0 +1,17 @@
+Revision history for Perl extension Date::PeriodParser.
+
+0.02  Sat Jun  1 10:14:50 BST 2002
+    - Fix dependencies.
+    - Replace tests with more extensive Test::More-based tests.
+    - fix 'night' to be a non-overlapping period with 'morning'
+      (is now 21:00:00 to 05:59:59 the next day).
+    - better support for odd but acceptable wording ("the day
+      before tomorrow", etc.).
+    - support for "in the" (particularly, support for "in the
+      morning/afternoon" meaning "tomorrow morning/afternoon" 
+      if it's not currently morning).
+
+0.01  Fri Apr 12 21:44:22 2002
+	- original version; created by h2xs 1.21 with options
+		-AX -n Date::PeriodParser
+
