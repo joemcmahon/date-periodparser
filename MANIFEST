@@ -15,7 +15,6 @@ t/08now.t
 t/09vague.t
 t/helpers.pl
 t/month-year.t
-t/no-words2nums.t
 t/pod-coverage.t
 t/pod.t
 t/this-month.t

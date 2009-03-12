@@ -4,9 +4,10 @@ use 5.006;
 use strict;
 use warnings;
 use Time::Local;
+use Lingua::EN::Words2Nums qw(words2nums);
 use Date::Calc qw(
     Add_Delta_Days
-	Add_Delta_YM
+    Add_Delta_YM
     Date_to_Time
     Day_of_Week
     Days_in_Month
@@ -20,15 +21,15 @@ use constant DEPENDENCY => -3;
 # Boring administrative details
 require Exporter;
 our @ISA = qw(Exporter);
-our %EXPORT_TAGS = ( 'all' => [ qw( parse_period	) ] );
+our %EXPORT_TAGS = ( 'all' => [ qw( parse_period) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( parse_period);
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 $Date::PeriodParser::DEBUG = 0;
 
-our $TestTime; # This is set by our tests so we don't have to dynamically figure out
-               # acceptable ranges for our test results
+our $TestTime; # This is set by our tests so we don't have to 
+               # dynamically figure out acceptable ranges for our test results
 
 my $roughly = qr/((?:a?round(?: about)?|about|roughly|circa|sometime)\s*)+/;
 
@@ -75,9 +76,9 @@ sub parse_period {
         if ( $modifier eq 'last' ) {
             @today = Add_Delta_Days( @today, -7 );
         }
-		elsif ( $modifier eq 'next' ) {
-			@today = Add_Delta_Days( @today, +7 );
-		}
+        elsif ( $modifier eq 'next' ) {
+            @today = Add_Delta_Days( @today, +7 );
+        }
         my $today = Day_of_Week(@today);
         my $monday = 1;
         my $sunday = 7;
@@ -98,9 +99,9 @@ sub parse_period {
         if ( $modifier eq 'last' ) {
             ( $year, $month ) = Add_Delta_YM( $year, $month, $day, 0, -1 );
         }
-		elsif ( $modifier eq 'next' ) {
-			($year, $month ) = Add_Delta_YM( $year, $month, $day, 0, 1 );
-		}
+        elsif ( $modifier eq 'next' ) {
+            ( $year, $month ) = Add_Delta_YM( $year, $month, $day, 0, 1 );
+        }
 
         my @first = ( $year, $month, 1, 0, 0, 0 );    # first day at midnight
         my $last_day_of_month = Days_in_Month( $year, $month );
@@ -124,10 +125,10 @@ sub parse_period {
 
     # Recent times
     if (/(the day (before|after) )?(yesterday|today|tomorrow)/ ||
-  	    /^this (morning|afternoon|evening|lunchtime)/   ||
-	    /^at lunchtime$/ ||
-	    /^(in the) (morning|afternoon|evening)/ ||
-	    /^(last |to)night/) {
+              /^this (morning|afternoon|evening|lunchtime)/   ||
+            /^at lunchtime$/ ||
+            /^(in the) (morning|afternoon|evening)/ ||
+            /^(last |to)night/) {
 
         if (s/the day (before|after)//) {
             my $wind = $1 eq "before" ? -1 : 1;
@@ -137,16 +138,17 @@ sub parse_period {
         if (/yesterday/)   { $day--; _debug("Back 1 day") }
         elsif (/tomorrow/) { $day++; _debug("Forward 1 day") }
 
-    	# if it's later than the morning and the phrase is "in the morning", add a day.
-	    if ($h>12 and /in the morning$/) {$day++}
-	
-	    # if it's later than the afternoon and the phrase is "in the afternoon",
-	    # add a day.
-	    elsif ($h>18 and /in the afternoon$/) {$day++}
-	
-	    # if it's nighttime, and the phrase is "in the evening", add a day.
-	    elsif (($h>21 or $h<6) and /in the evening$/) {$day++}
-	
+        # if it's later than the morning and the phrase is 
+        # "in the morning", add a day.
+        if ($h>12 and /in the morning$/) {$day++}
+
+        # if it's later than the afternoon and the phrase is 
+        # "in the afternoon", add a day.
+        elsif ($h>18 and /in the afternoon$/) {$day++}
+
+        # if it's nighttime, and the phrase is "in the evening", add a day.
+        elsif (($h>21 or $h<6) and /in the evening$/) {$day++}
+
         $day-- if /last/;
         ($from, $to, $leeway) = _period_or_all_day($day, $mon, $year, $now);
         return _apply_leeway($from, $to, $leeway * $vague);
@@ -155,22 +157,21 @@ sub parse_period {
     # "ago" and "from now" are both pretty limited: only an offset in
     # days is currently supported.
     s/a week/seven days/g;
+
     if (/^(.*) day(?:s)? ago$/ || /^in (.*) day(?:s)?(?: time)$/ || 
         /^(.*) days (?:away)?\s*(?:from now)?$/) {
         my $days = $1;
-	    {
-	      local $_; 
-          # words2nums() trashes $_.
-          eval { require Lingua::EN::Words2Nums }
-             or return (DEPENDENCY, "Lingua::EN::Words2Nums not installed");
-	  		$days = Lingua::EN::Words2Nums::words2nums($days);
-		}
-    	if (defined $days) { 
+        {
+            local $_; 
+            # words2nums() trashes $_.
+            $days = Lingua::EN::Words2Nums::words2nums($days);
+        }
+        if (defined $days) { 
             $days *= -1 if /ago/;
             _debug("Modifying day by $days");
             $day += $days;
             ($from, $to, $leeway) = 
-	      		_period_or_all_day($day, $mon, $year, $now);
+                              _period_or_all_day($day, $mon, $year, $now);
             return _apply_leeway($from, $to, $leeway * $vague);
         }
      }
@@ -187,29 +188,29 @@ my %points_of_day = (
     # Technically, after midnight is the morning of the next day.
     # Morning runs until noon.
     morning   => [
-                    [0, 0, 0],
-                    [12, 0, 0]
+                    [0,   0,  0],
+                    [12,  0,  0]
                  ],
 
     # Must be English rules for how long lunch is :) [JM]
     lunchtime => [
-                    [12, 0, 0],
-                    [13,30, 0]
+                    [12,  0,  0],
+                    [13, 30,  0]
                  ],
     # Afternoon runs till 6 PM.
     afternoon => [
-                    [13,30, 0], # "It is not afternoon until a gentleman
-                    [18, 0, 0]  # has had his luncheon."
+                    [13, 30,  0], # "It is not afternoon until a gentleman
+                    [18,  0,  0]  # has had his luncheon."
                  ],
     # Evening runs up to but not including midnight.
     evening   => [
-                    [18, 0, 0], # Regardless of what Mediterraneans think
-                    [23,59,59]
+                    [18,  0,  0], # Regardless of what Mediterraneans think
+                    [23, 59, 59]
                  ],
     # The entire day.
     day       => [
-                    [0, 0, 0],
-                    [23,59,59],
+                    [0,   0,  0],
+                    [23, 59, 59],
                  ]
 );
 

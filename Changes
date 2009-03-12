@@ -1,4 +1,8 @@
 Revision history for Perl extension Date::PeriodParser.
+0.06  Thu Sep 20 15:17:10 PDT 2007
+	- Weird '._*' files in distribution removed.
+	- Tabs removed. :/
+	- Made dependency on Lingua::EN::Words2Nums unconditional.
 
 0.05  Sat Mar  3 15:33:33 PST 2002 (3/3 3:33 - you can't make this stuff up!)
 	- Several patches from Michael Hendrix incorporated (thanks Michael!)
