@@ -8,8 +8,9 @@ use Date::PeriodParser;
 #        /^(last |to)night/ ||
 #        /^(yesterday|tomorrow) (morning|afternoon|evening)$/ ||
 BEGIN {
-# Set the base time we use for tests (22:01:36 12/4/2002)
-$Date::PeriodParser::TestTime = $base = 1018674096;
+# Set the base time we use for tests (Fri Apr 12 22:01:36 2002)
+$Date::PeriodParser::TestTime = $base = 
+    timelocal( '36', '1', '22', '12', '3', '102' );
 my ($s, $mn, $h, $d, $m, $y, $wd, $yd, $dst) = localtime($base);
 
 sub slt { scalar localtime timelocal @_ }
