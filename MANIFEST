@@ -12,4 +12,6 @@ t/06ago.t
 t/07junk.t
 t/08now.t
 t/09vague.t
+t/pod.t
+t/pod-coverage.t
 META.yml                                 Module meta-data (added by MakeMaker)

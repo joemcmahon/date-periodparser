@@ -1,4 +1,5 @@
 package Date::PeriodParser;
+
 use Lingua::EN::Words2Nums;
 use 5.006;
 use strict;
@@ -15,7 +16,7 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw( parse_period	) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( parse_period);
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 $Date::PeriodParser::DEBUG = 0;
 
@@ -23,9 +24,13 @@ our $TestTime; # This is set by test.pl so we don't have to be dynamic
 
 my $roughly = qr/((?:a?round(?: about)?|about|roughly|circa|sometime)\s*)+/;
 
-sub debug {
+# Emit debug messages if the package global $DEBUG is set.
+
+sub _debug {
     print STDERR "# @_\n" if $Date::PeriodParser::DEBUG;
 }
+
+# The actual parsing routine. Detained below in the pod.
 
 sub parse_period {
     local $_ = lc shift; # Since we're doing lots of regexps on it.
@@ -43,11 +48,11 @@ sub parse_period {
     # means perhaps twelve days either side. 
     my ($from, $to, $leeway);
     my $vague = s/^$roughly\s*//;
-    debug("this is a vague time");
+    _debug("this is a vague time");
     
     # Stupid cases first.
     # "now": precisely now, or +/- 5 minutes if vague
-    return apply_leeway($now, $now, 300 * $vague) 
+    return _apply_leeway($now, $now, 300 * $vague) 
         if /^now$/;
 
     if ($_ eq "" and $vague) { # Biggest range possible.
@@ -64,11 +69,11 @@ sub parse_period {
 
         if (s/the day (before|after)//) {
             my $wind = $1 eq "before" ? -1 : 1;
-            debug("Modifying day by $wind");
+            _debug("Modifying day by $wind");
             $day += $wind;
         }
-        if (/yesterday/)   { $day--; debug("Back 1 day") }
-        elsif (/tomorrow/) { $day++; debug("Forward 1 day") }
+        if (/yesterday/)   { $day--; _debug("Back 1 day") }
+        elsif (/tomorrow/) { $day++; _debug("Forward 1 day") }
 	# if it's later than the morning and the phrase is "in the morning", add a day.
 	if ($h>12 and /in the morning$/) {$day++}
 	# if it's later than the afternoon and the phrase is "in the afternoon",
@@ -77,8 +82,8 @@ sub parse_period {
 	# if it's nighttime, and the phrase is "in the evening", add a day.
 	elsif (($h>21 or $h<6) and /in the evening$/) {$day++}
         $day-- if /last/;
-        ($from, $to, $leeway) = period_or_all_day($day, $mon, $year, $now);
-        return apply_leeway($from, $to, $leeway * $vague);
+        ($from, $to, $leeway) = _period_or_all_day($day, $mon, $year, $now);
+        return _apply_leeway($from, $to, $leeway * $vague);
     }
 
     # "ago" and "from now" are both pretty limited: only an offset in
@@ -89,54 +94,71 @@ sub parse_period {
         my $days = $1;
 	{
 	  local $_; 
-          # This trashes $_
+          # words2nums() trashes $_.
 	  $days = words2nums($days);
 	}
         if (defined $days) { 
             $days *= -1 if /ago/;
-            debug("Modifying day by $days");
+            _debug("Modifying day by $days");
             $day += $days;
             ($from, $to, $leeway) = 
-	      period_or_all_day($day, $mon, $year, $now);
-            return apply_leeway($from, $to, $leeway * $vague);
+	      _period_or_all_day($day, $mon, $year, $now);
+            return _apply_leeway($from, $to, $leeway * $vague);
         }
      }
 
+    # We got nothing. Warn the caller.
     if (!$from and !$to) {
         return (GIBBERISH, "I couldn't parse that at all.");
     }
 }
 
+# Define the basic ranges for a day. (earliest,latest) pairs.
 my %points_of_day = (
+
+    # Technically, after midnight is the morning of the next day.
+    # Morning runs until noon.
     morning   => [
                     [0, 0, 0],
                     [12, 0, 0]
                  ],
+
+    # Must be English rules for how long lunch is :) [JM]
     lunchtime => [
                     [12, 0, 0],
                     [13,30, 0]
                  ],
+    # Afternoon runs till 6 PM.
     afternoon => [
                     [13,30, 0], # "It is not afternoon until a gentleman
                     [18, 0, 0]  # has had his luncheon."
                  ],
+    # Evening runs up to but not including midnight.
     evening   => [
                     [18, 0, 0], # Regardless of what Mediterraneans think
                     [23,59,59]
                  ],
+    # The entire day.
     day       => [
                     [0, 0, 0],
                     [23,59,59],
                  ]
 );
 
-sub apply_point_of_day {
+# _apply_point_of_day takes the word specifying the portion of the 
+# day and transforms it into a range of hours.
+
+sub _apply_point_of_day {
     my ($d, $m, $y, $point) = @_;
     my ($from, $to); 
     if ($point eq "night") { # Special case
+        # Nights are a special case because they run over the
+        # day boundary. (9PM to 5:59:59AM the next day).
         $from = timelocal(0,0,21,$d,$m,$y);
         $to   = timelocal(59,59,5,$d+1,$m,$y);
     } else {
+        # Look up the appropriate range and set the hours
+        # in the specified day.
         my $spec = $points_of_day{$point};
         my @from = (reverse(@{$spec->[0]}),$d,$m,$y);
         my @to   = (reverse(@{$spec->[1]}),$d,$m,$y);
@@ -146,7 +168,11 @@ sub apply_point_of_day {
     return ($from, $to);
 }
 
-sub period_or_all_day {
+# _period_or_all_day determines the size of leeway to
+# be applied to a date (closer dates get less, dates
+# further in the future or past get more). It also
+# applies the appropriate point-of-day.
+sub _period_or_all_day {
     my $point;
     my ($day, $mon, $year, $now) = @_;
     my $leeway;
@@ -163,18 +189,19 @@ sub period_or_all_day {
         $leeway = 60*60*3*$days_ago;
         # Up to a maximum of five days
         $leeway > 24*60*60*5 and $leeway = 24*60*60*5;
-        debug("Wanted around $days_ago, allowing $leeway either side");
+        _debug("Wanted around $days_ago, allowing $leeway either side");
         $point = "day";
     }
-    return (apply_point_of_day($day, $mon, $year, $point), $leeway);
+    return (_apply_point_of_day($day, $mon, $year, $point), $leeway);
 }
 
-sub apply_leeway {
+# _apply_leeway just applies the necessary leeway to the
+# current date range.
+sub _apply_leeway {
     my ($from, $to, $leeway) = @_;
     $from -= $leeway; $to += $leeway;
     return ($from, $to);
 }
-
 1;
 __END__
 
@@ -192,6 +219,15 @@ Date::PeriodParser - Turns English descriptions into time periods
 
 
 =head1 DESCRIPTION
+
+C<Date::PeriodParser> provides a means of interpreting vague descriptions
+of dates as actual, meaningful date values by taking a shot at 
+interpreting the meaning of the supplied descriptive phrase, 
+generating a best-guess estimate of the time period described.
+
+=head1 ROUTINES
+
+=head2 parse_period
 
 The subroutine C<parse_period> attempts to turn the English description
 of a time period into a pair of Unix epoch times. As a famous man once
@@ -240,6 +276,9 @@ If you enter something it can't parse, it'll return an error code and an
 explanation instead of two epoch time values. Error code -1 means "You
 entered gibberish", error code -2 means "you entered something
 ambiguous", and the explanation will tell you how to disambiguate it.
+
+=cut
+
 
 =head1 BUGS
 
