@@ -1,17 +1,21 @@
 use Test::More tests=>8;
 use Time::Local;
 use Date::PeriodParser;
+use POSIX qw( strftime );
 use vars qw( $Date::PeriodParser::TestTime );
 {
     # Set the base time we use for tests (Fri Apr 12 22:01:36 2002)
     $Date::PeriodParser::TestTime = $base =
-        timelocal( '36', '1', '22', '12', '3', '102' );
+        timelocal( qw(36 1 22 12 3 102 ) );
 }
 
 sub slt { scalar localtime timelocal @_ }
 sub sl { scalar localtime shift }
 sub tl { timelocal @_ }
 my ($s, $mn, $h, $d, $m, $y, $wd, $yd, $dst) = localtime($base);
+my $to_be = ($dst ? "to be" : "not to be");  # Hamlet operator!
+diag "Base time is considered $to_be daylight savings";
+diag "Time zone on this machine is " . strftime("%Z", localtime());
 
 %tests = (
         "round about now"  => [ sl( tl( '36', '56', '21', '12', '3', '102' ) ), 
@@ -41,6 +45,6 @@ my ($s, $mn, $h, $d, $m, $y, $wd, $yd, $dst) = localtime($base);
 my($from, $to);
 foreach $interval (keys %tests) {
   ($from, $to) = parse_period($interval);
-  is(sl($from), $tests{$interval}->[0]);
-  is(sl($to), $tests{$interval}->[1]);
+  is(sl($from), $tests{$interval}->[0], "'$interval' start");
+  is(sl($to),   $tests{$interval}->[1], "'$interval' end");
 }

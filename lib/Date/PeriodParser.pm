@@ -24,7 +24,7 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw( parse_period) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( parse_period);
-our $VERSION = '0.07';
+our $VERSION = '0.10';
 
 $Date::PeriodParser::DEBUG = 0;
 
@@ -268,8 +268,27 @@ sub _period_or_all_day {
 # current date range.
 sub _apply_leeway {
     my ($from, $to, $leeway) = @_;
-    $from -= $leeway; $to += $leeway;
-    return ($from, $to);
+    my $new_from = $from - $leeway;
+    my $new_to   = $to   + $leeway;
+    # watch for daylight savings crossovers!
+    for my $pair ( [\$new_from, $from], [\$new_to, $to] ) {
+        if ( _isnt_dst(${ $pair->[0] }) and _is_dst($pair->[1]) ) {
+            ${ $pair->[0] } += 60 * 60; # forward an hour to match
+        }
+        if ( _is_dst(${ $pair->[0] }) and _isnt_dst($pair->[1]) ) {
+            ${ $pair->[0] } -= 60 * 60; # back an hour to match
+        }
+    }
+    return ($new_from, $new_to);
+}
+
+sub _is_dst {
+    my ($given_time) = shift;
+    return (localtime $given_time)[-1];
+}
+
+sub _isnt_dst {
+    return not _is_dst(@_);
 }
 
 # similar to Time::Local::timelocal but accepts the offsets returned by

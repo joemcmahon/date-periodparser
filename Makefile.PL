@@ -7,6 +7,7 @@ WriteMakefile(
     'PREREQ_PM'		=> {
         "Lingua::EN::Words2Nums" => 0,
         "Date::Calc" => 0,
+        "POSIX" => 0,
         }, # e.g., Module::Name => 1.1
 	    dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
 	    clean               => { FILES => 'Date-PeriodParser-*' },
