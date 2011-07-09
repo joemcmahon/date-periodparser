@@ -1,4 +1,10 @@
 Revision history for Perl extension Date::PeriodParser.
+0.11  Fri Jul  8 22:48:22 PDT 2011
+	- Dropped the Devel::Hide requirement and test; we don't really need it.
+
+0.10  ...
+	- Mis-incremented the vesion number, oops.
+
 0.09  Thu Jul  7 21:48:39 MDT 2011
         - 09vague.t bug finally found: caused by different starts of daylight
           savings. Luckily (or unluckily) the date chosen crosses the DST
