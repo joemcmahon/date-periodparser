@@ -1,4 +1,4 @@
-use Test::More tests=>12;
+use Test::More tests=>22;
 use Time::Local;
 use Date::PeriodParser;
 {
@@ -15,9 +15,15 @@ my ($s, $mn, $h, $d, $m, $y, $wd, $yd, $dst) = localtime($base);
           'a week ago'                =>
              [ slt(0,  0,  0,  $d-7, $m, $y, abs($wd-7)%7, $yd-7, $dst),
                slt(59, 59, 23, $d-7, $m, $y, abs($wd-7)%7, $yd-7, $dst) ],
+          'six weeks from now'        =>
+             [ slt(0,  0,  0,  24, 4, $y, abs($wd-7)%7, $yd-7, $dst),
+               slt(59, 59, 23, 24, 4, $y, abs($wd-7)%7, $yd-7, $dst) ],
           '1 day ago'                =>
              [ slt(0,  0,  0,  $d-1, $m, $y, ($wd-1)%7, $yd-1, $dst),
                slt(59, 59, 23, $d-1, $m, $y, ($wd-1)%7, $yd-1, $dst) ],
+          'twenty years ago'                =>
+             [ slt(0,  0,  0,  $d, $m, $y-20, ($wd-1)%7, $yd-1, $dst),
+               slt(59, 59, 23, $d, $m, $y-20, ($wd-1)%7, $yd-1, $dst) ],
           'four days ago'                =>
              [ slt(0,  0,  0,  $d-4, $m, $y, ($wd-4)%7, $yd-4, $dst),
                slt(59, 59, 23, $d-4, $m, $y, ($wd-4)%7, $yd-4, $dst) ],
@@ -30,6 +36,15 @@ my ($s, $mn, $h, $d, $m, $y, $wd, $yd, $dst) = localtime($base);
           'seven days away'        =>
              [ slt(0,  0,  0,  $d+7, $m, $y, ($wd+7)%7, $yd+7, $dst),
                slt(59, 59, 23, $d+7, $m, $y, ($wd+7)%7, $yd+7, $dst) ],
+           'one hundred days ago'  =>
+             [ slt(0,  0,  0,  2, 0, $y, ($wd+7)%7, $yd+7, $dst),
+               slt(59, 59, 23, 2, 0, $y, ($wd+7)%7, $yd+7, $dst) ],
+           'two thousand days ago'  =>
+             [ slt(0,  0,  0,  20, 9, 96, ($wd+7)%7, $yd+7, $dst),
+               slt(59, 59, 23, 20, 9, 96, ($wd+7)%7, $yd+7, $dst) ],
+           'in ten months'          =>
+             [ slt(0,  0,  0,  $d, 1, $y+1, ($wd+7)%7, $yd+7, $dst),
+               slt(59, 59, 23, $d, 1, $y+1, ($wd+7)%7, $yd+7, $dst) ],
          );
 
 my($from, $to);

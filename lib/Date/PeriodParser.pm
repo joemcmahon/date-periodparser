@@ -1,6 +1,6 @@
 package Date::PeriodParser;
 
-use 5.006;
+use 5.010;
 use strict;
 use warnings;
 use Time::Local;
@@ -24,7 +24,7 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw( parse_period) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( parse_period);
-our $VERSION = '0.11';
+our $VERSION = '0.13';
 
 $Date::PeriodParser::DEBUG = 0;
 
@@ -42,9 +42,10 @@ sub _debug {
 # The actual parsing routine. Detailed below in the pod.
 
 sub parse_period {
-    local $_ = lc shift; # Since we're doing lots of regexps on it.
+    local $_ = lc (shift // ''); # Since we're doing lots of regexps on it.
     my $now = $TestTime || time;
-    my ($s, $m, $h, $day, $mon, $year) = (localtime $now)[0..5];
+    my ($s, $m, $h, $day, $mon, $year) = my @now = 
+        (localtime $now)[0..5];
 
     # Tidy slightly.
     s/^\s+//;s/\s+$//;
@@ -150,16 +151,20 @@ sub parse_period {
         elsif (($h>21 or $h<6) and /in the evening$/) {$day++}
 
         $day-- if /last/;
+
+        ($day, $mon, $year) = _zyprexa($day, $mon, $year);
+
         ($from, $to, $leeway) = _period_or_all_day($day, $mon, $year, $now);
         return _apply_leeway($from, $to, $leeway * $vague);
+
     }
 
     # "ago" and "from now" are both pretty limited: only an offset in
     # days is currently supported.
-    s/a week/seven days/g;
+    s/a (week|month|day|year)/one $1/g;
 
-    if (/^(.*) day(?:s)? ago$/ || /^in (.*) day(?:s)?(?: time)$/ || 
-        /^(.*) days (?:away)?\s*(?:from now)?$/) {
+    if (/^(.*) day(?:s)? ago$/ || /^in (.*) day(?:s)?(?: time)?$/ || 
+        /^(.*) day(?:s)? (?:away)?\s*(?:from now)?$/) {
         my $days = $1;
         {
             local $_; 
@@ -170,8 +175,67 @@ sub parse_period {
             $days *= -1 if /ago/;
             _debug("Modifying day by $days");
             $day += $days;
+            ($day, $mon, $year) = _zyprexa($day, $mon, $year);
             ($from, $to, $leeway) = 
-                              _period_or_all_day($day, $mon, $year, $now);
+                _period_or_all_day($day, $mon, $year, $now);
+            return _apply_leeway($from, $to, $leeway * $vague);
+        }
+     }
+
+    if (/^(.*) week(?:s)? ago$/ || /^in (.*) week(?:s)?(?: time)?$/ || 
+        /^(.*) week(?:s)? (?:away)?\s*(?:from now)?$/) {
+        my $weeks = $1;
+        my $days;
+        {
+            local $_; 
+            # words2nums() trashes $_.
+            $days = 7 * Lingua::EN::Words2Nums::words2nums($weeks);
+        }
+        if (defined $days) { 
+            $days *= -1 if /ago/;
+            _debug("Modifying day by $days");
+            $day += $days;
+            ($day, $mon, $year) = _zyprexa($day, $mon, $year);
+            ($from, $to, $leeway) = 
+                _period_or_all_day($day, $mon, $year, $now);
+            return _apply_leeway($from, $to, $leeway * $vague);
+        }
+     }
+
+    if (/^(.*) month(?:s)? ago$/ || /^in (.*) month(?:s)?(?: time)?$/ || 
+        /^(.*) month(?:s)? (?:away)?\s*(?:from now)?$/) {
+        my $months = $1;
+        {
+            local $_; 
+            # words2nums() trashes $_.
+            $months = Lingua::EN::Words2Nums::words2nums($months);
+        }
+        if (defined $months) { 
+            $months *= -1 if /ago/;
+            _debug("Modifying month by $months");
+            $mon += $months;
+            ($day, $mon, $year) = _zyprexa($day, $mon, $year);
+            ($from, $to, $leeway) = 
+                _period_or_all_day($day, $mon, $year, $now);
+            return _apply_leeway($from, $to, $leeway * $vague);
+        }
+     }
+
+    if (/^(.*) year(?:s)? ago$/ || /^in (.*) year(?:s)?(?: time)?$/ || 
+        /^(.*) year(?:s)? (?:away)?\s*(?:from now)?$/) {
+        my $years = $1;
+        {
+            local $_; 
+            # words2nums() trashes $_.
+            $years = Lingua::EN::Words2Nums::words2nums($years);
+        }
+        if (defined $years) { 
+            $years *= -1 if /ago/;
+            _debug("Modifying year by $years");
+            $year += $years;
+            ($day, $mon, $year) = _zyprexa($day, $mon, $year);
+            ($from, $to, $leeway) = 
+                _period_or_all_day($day, $mon, $year, $now);
             return _apply_leeway($from, $to, $leeway * $vague);
         }
      }
@@ -311,6 +375,51 @@ sub _today {
     $year += 1900;
     $month++;
     return ($year, $month, $day);
+}
+
+# Our date math can lead to days or months out of range, so we need to get 
+# them back to something sane before we pass them to any of the date functions.
+# (Zyprexa is an anti-psychotic.)
+sub _zyprexa {
+    my( $day, $month, $year) = @_;
+
+    $day++;
+    $month++;
+    $year += 1900;
+
+    while ($month > 12) {
+        $year++;
+        $month -= 12;
+    }
+
+    while ($month < 1) {
+        $year--;
+        $month += 12;
+    }
+
+    while ($day > Days_in_Month($year, $month)) {
+        $day -= Days_in_Month ($year, $month);
+        $month++;
+        if ($month > 12) {
+            $month = 0;
+            $year++;
+        }
+    }
+
+    while ($day < 0) {
+        $month--;
+        if ($month < 1) {
+            $month = 12;
+            $year--;
+        }
+        $day += Days_in_Month($year, $month);
+    }
+
+    $day--;
+    $month--;
+    $year -= 1900;
+
+    return ($day, $month, $year);
 }
 
 1;

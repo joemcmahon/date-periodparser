@@ -1,4 +1,16 @@
 Revision history for Perl extension Date::PeriodParser.
+0.13  Fri Jan 25 22:15:27 PST 2013
+    - Realized that _zyprexa (the sub that makes dates sane) now makes
+      month and year ranges (like day ranges) easy to add.
+    - Added week ranges, so now ranges like 'six weeks ago' and 'in two weeks'
+      work as well.
+
+0.12  Fri Jan 25 21:47:11 PST 2013
+    - Fixed year-end and month-end rollovers from 'xxx days ago'
+      (thank you to Mark Alder at Nokia for the original patch, which
+       I twisted into a horrible parody of itself in the name of
+       generalizing it)
+
 0.11  Fri Jul  8 22:48:22 PDT 2011
 	- Dropped the Devel::Hide requirement and test; we don't really need it.
 
