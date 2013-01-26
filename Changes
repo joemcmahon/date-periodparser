@@ -1,15 +1,38 @@
 Revision history for Perl extension Date::PeriodParser.
-0.13  Fri Jan 25 22:15:27 PST 2013
-    - Realized that _zyprexa (the sub that makes dates sane) now makes
-      month and year ranges (like day ranges) easy to add.
-    - Added week ranges, so now ranges like 'six weeks ago' and 'in two weeks'
-      work as well.
+0.17  Sat Jan 26 01:27:56 PST 2013
+    - Formerly, you could only do date offsets in days. You can now do
+      them in days, months, weeks, and years, and they no longer mess up
+      when going over a month or year boundary (thanks to Mark Adler from
+      Nokia for sending me a patch, which I proceeded to distort out of
+      recognizability to add the week/month/year offsets).
+    - Updated the docs so we all know what works now.
+    - Somehow managed to badly hash up the Changelog; now fixed.
+    - I spelled Mark's name wrong (d'oh!).
+    - There was a bug in _zyprexa() for dates rolling forward over a
+      month boundary. Fixed.
 
-0.12  Fri Jan 25 21:47:11 PST 2013
+0.16  Fri Jan 25 22:15:27 PST 2013
+    - Realized that _zyprexa (the sub that makes dates sane) now makes
+      week, month and year ranges (like day ranges) easy to add, so now 
+      ranges like 'six weeks ago' and 'in two weeks' work as well.
+
+0.15  Fri Jan 25 21:47:11 PST 2013
     - Fixed year-end and month-end rollovers from 'xxx days ago'
-      (thank you to Mark Alder at Nokia for the original patch, which
-       I twisted into a horrible parody of itself in the name of
-       generalizing it)
+      (thank you to Mark Adler at Nokia for the original patch, which
+      I twisted into a horrible parody of itself in the name of
+      generalizing it)
+
+0.14  Tue Jul 12 21:45:37 PDT 2011
+    - Still problems with some time zone or another in CEST timezone.
+      Added a little more debugging for this situation in timezone test.
+    - Spelling fix in Changes.
+
+0.13  Mon Jul 11 12:45:25 PDT 2011
+    - Neglected to update changelog; no actual code changes in this release
+
+0.12  Mon Jul 11 12:44:19 PDT 2011
+    - fixed timezone test to skip on Windows (tzset doesn't work there)
+    - dropped use vars in two tests that were throwing errors on 5.6
 
 0.11  Fri Jul  8 22:48:22 PDT 2011
 	- Dropped the Devel::Hide requirement and test; we don't really need it.

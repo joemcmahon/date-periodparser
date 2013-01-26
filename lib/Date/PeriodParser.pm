@@ -24,7 +24,7 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw( parse_period) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( parse_period);
-our $VERSION = '0.13';
+our $VERSION = '0.17';
 
 $Date::PeriodParser::DEBUG = 0;
 
@@ -401,7 +401,7 @@ sub _zyprexa {
         $day -= Days_in_Month ($year, $month);
         $month++;
         if ($month > 12) {
-            $month = 0;
+            $month = 1;
             $year++;
         }
     }
@@ -443,13 +443,13 @@ Date::PeriodParser - Turns English descriptions into time periods
 C<Date::PeriodParser> provides a means of interpreting vague descriptions
 of dates as actual, meaningful date values by taking a shot at 
 interpreting the meaning of the supplied descriptive phrase, 
-generating a best-guess estimate of the time period described.
+generating a best-guess before-and-after estimate of the time period described.
 
 =head1 ROUTINES
 
 =head2 parse_period
 
-The subroutine C<parse_period> attempts to turn the English description
+The subroutine C<parse_period> attempts to turn an English description
 of a time period into a pair of Unix epoch times. As a famous man once
 said, "Of course, this is a heuristic, which is a fancy way of saying
 that it doesn't work".
@@ -492,13 +492,11 @@ A month name followed by a four-digit year.
 
 =item * "ago" and "from now"
 
-Offsets in days and "a week" are accepted; you cannot cross a month
-boundary in this release.
+Offsets in days, weeks, months, and years are accepted.
 
-=item * "in I<xxx> day(s)" and "in I<xxx> days time"
+=item * "in I<xxx> (unit)(s)" and "in I<xxx> (units) time"
 
-Offsets in days are supported; again, crossing month boundaries does not
-yet work.
+Offsets in days, weeks, months, and years are supported.
 
 =back
 
@@ -525,21 +523,15 @@ Used to do all that messy date math.
 
 =head1 BUGS
 
-Parsing is limited. Some relatively complicated things work fine, but some
-simple things do not.
+=over 
 
-=over 4 
-
-=item * Supports only a number of days "ago" or "from now". Should be expanded 
-to handle weeks, months, and years as well. 
+=item * Parsing is limited. Some relatively complicated things work fine, but some simple things do not.
 
 =item * The time-of-day words ("morning", "afternoon", "evening", "night", and 
 "lunchtime") should accept relative modifiers (e.g., "lunchtime tomorrow", 
 "yesterday evening"), but don't.
 
-=item * Day offsets carrying the day of the month over a valid limit 
-cause an internal error in localtime(). This is the biggest bug at present
-and will be addressed in the next release.
+=item * The API is much too C-like. We should probably throw a structured exception instead of returning a failure code.
 
 =back
 
@@ -551,7 +543,7 @@ Major contributions by Michael Hendrix (mndrix@cpan.org) (Thanks!)
 
 =head1 LEGAL
 
-Copyright (C) 2002 by Simon Cozens; Copyright (c) 2005-2007 by Joe McMahon
+Copyright (C) 2002 by Simon Cozens; Copyright (c) 2005-2013 by Joe McMahon
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.5 or,

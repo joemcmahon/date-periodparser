@@ -1,4 +1,4 @@
-use Test::More tests=>22;
+use Test::More tests=>24;
 use Time::Local;
 use Date::PeriodParser;
 {
@@ -45,6 +45,9 @@ my ($s, $mn, $h, $d, $m, $y, $wd, $yd, $dst) = localtime($base);
            'in ten months'          =>
              [ slt(0,  0,  0,  $d, 1, $y+1, ($wd+7)%7, $yd+7, $dst),
                slt(59, 59, 23, $d, 1, $y+1, ($wd+7)%7, $yd+7, $dst) ],
+           'in a million days'      =>
+             [ slt(0,  0,  0,  9, 2, 2840-1900, ($wd+7)%7, $yd+7, $dst),
+               slt(59, 59, 23, 9, 2, 2840-1900, ($wd+7)%7, $yd+7, $dst) ],
          );
 
 my($from, $to);
