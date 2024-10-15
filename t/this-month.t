@@ -4,7 +4,9 @@ use Test::More;
 use Time::Local;
 use Date::PeriodParser;
 use POSIX qw( strftime );
-require 't/helpers.pl';
+
+use lib 't';
+use helpers;
 
 # Tests for "this month" and "last month"
 
@@ -47,8 +49,6 @@ my %phrases = (
     ],
 );
 
-plan tests => 4 * 3;
-
 while ( my ($phrase, $tests) = each %phrases ) {
     for my $test (@$tests) {
         my ($base, $right_from, $right_to) = @$test;
@@ -59,3 +59,4 @@ while ( my ($phrase, $tests) = each %phrases ) {
         is( iso($to), $right_to, "$phrase 'to' ok" );
     }
 }
+done_testing;

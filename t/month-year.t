@@ -4,107 +4,68 @@ use Test::More;
 use Time::Local;
 use Date::PeriodParser;
 use POSIX qw( strftime );
-require 't/helpers.pl';
+
+use lib 't';
+use helpers;
 
 # Tests for "january 2007", etc
 
 my %phrases = (
     'january 2007' => [
         [
+            1,
             '2007-03-01T09:23:07',   # base
-            '2007-01-01T00:00:00',   # expected from
-            '2007-01-31T23:59:59',   # expected to
-        ],
-        [
-            '2007-01-01T10:07:22',   # base
-            '2007-01-01T00:00:00',   # expected from
-            '2007-01-31T23:59:59',   # expected to
-        ],
-        [
-            '2006-11-23T10:47:58',   # base
             '2007-01-01T00:00:00',   # expected from
             '2007-01-31T23:59:59',   # expected to
         ],
     ],
     'jan 2007' => [
         [
+            1,
             '2007-03-01T09:23:07',   # base
-            '2007-01-01T00:00:00',   # expected from
-            '2007-01-31T23:59:59',   # expected to
-        ],
-        [
-            '2007-01-01T10:07:22',   # base
-            '2007-01-01T00:00:00',   # expected from
-            '2007-01-31T23:59:59',   # expected to
-        ],
-        [
-            '2006-11-23T10:47:58',   # base
             '2007-01-01T00:00:00',   # expected from
             '2007-01-31T23:59:59',   # expected to
         ],
     ],
     'february 1993' => [
         [
+            1,
             '2007-03-01T09:23:07',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
-        ],
-        [
-            '2007-01-01T10:07:22',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
-        ],
-        [
-            '2006-11-23T10:47:58',   # base
             '1993-02-01T00:00:00',   # expected from
             '1993-02-28T23:59:59',   # expected to
         ],
     ],
     'feb 1993' => [
         [
+            1,
             '2007-03-01T09:23:07',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
-        ],
-        [
-            '2007-01-01T10:07:22',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
-        ],
-        [
-            '2006-11-23T10:47:58',   # base
             '1993-02-01T00:00:00',   # expected from
             '1993-02-28T23:59:59',   # expected to
         ],
     ],
     'febr 1993' => [
         [
+            0,
             '2007-03-01T09:23:07',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
-        ],
-        [
-            '2007-01-01T10:07:22',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
-        ],
-        [
-            '2006-11-23T10:47:58',   # base
-            '1993-02-01T00:00:00',   # expected from
-            '1993-02-28T23:59:59',   # expected to
+            Date::PeriodParser::GIBBERISH,   # expected from
+            "Month 'febr' doesn't exist in this locale.", # expected to
         ],
     ],
 );
 
-plan tests => 2 * 15;
-
 while ( my ($phrase, $tests) = each %phrases ) {
-    for my $test (@$tests) {
-        my ($base, $right_from, $right_to) = @$test;
-        set_time($base);
+  for my $test (@$tests) {
+      my ($success_expected, $base, $right_from, $right_to) = @$test;
+      set_time($base);
 
-        my ( $from, $to ) = parse_period($phrase);
+      my ( $from, $to ) = parse_period($phrase);
+      if ($success_expected) {
         is( iso($from), $right_from, "$phrase 'from' ok" );
         is( iso($to), $right_to, "$phrase 'to' ok" );
-    }
+      } else {
+        is $from, Date::PeriodParser::GIBBERISH, "got GIBBERISH as expected";
+        like $to, qr/Month '.*' doesn't exist in this locale\./, "got error string expected";
+      }
+   }
 }
+done_testing;

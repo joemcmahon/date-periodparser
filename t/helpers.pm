@@ -1,5 +1,7 @@
 use strict;
 use warnings;
+use Exporter;
+our @EXPORT = qw(set_time iso);
 
 sub set_time {
     my ($timestamp) = @_;

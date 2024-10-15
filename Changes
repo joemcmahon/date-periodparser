@@ -1,4 +1,10 @@
 Revision history for Perl extension Date::PeriodParser.
+0.50  Tue Oct 15 01:15:10 PDT 2024
+  - Convert time calculations to Time::Piece and Time::Second
+  - First-cut locale support; will probably need more work
+  - Fixes for long offsets (> 365 days)
+  - More diagnostics in tests to help debug locale issues
+
 0.17  Sat Jan 26 01:27:56 PST 2013
     - Formerly, you could only do date offsets in days. You can now do
       them in days, months, weeks, and years, and they no longer mess up

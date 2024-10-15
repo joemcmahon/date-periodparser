@@ -5,14 +5,68 @@ use strict;
 use warnings;
 use Time::Local;
 use Lingua::EN::Words2Nums qw(words2nums);
-use Date::Calc qw(
-    Add_Delta_Days
-    Add_Delta_YM
-    Date_to_Time
-    Day_of_Week
-    Days_in_Month
-    Decode_Month
+
+use Time::Piece;
+use Time::Seconds;
+use I18N::Langinfo qw(langinfo
+  ABMON_1 ABMON_2 ABMON_3 ABMON_4 ABMON_5 ABMON_6 ABMON_7 ABMON_8 ABMON_9 ABMON_10 ABMON_11 ABMON_12
+  MON_1 MON_2 MON_3 MON_4 MON_5 MON_6 MON_7 MON_8 MON_9 MON_10 MON_11 MON_12
 );
+
+# The following subs wrap Time::Piece operations with the old Date::Calc
+# function names to allow us to swap in Time::Piece with mimimum friction.
+
+sub Add_Delta_Days {
+  my($date, $delta_days) = @_;
+  $date + $delta_days * ONE_DAY;
+}
+
+sub Add_Delta_YM {
+  my($date, $delta_years, $delta_months) = @_;
+  $date + $delta_years * ONE_YEAR + $delta_months * ONE_MONTH;
+}
+
+sub Day_of_Week {
+  my($t) = @_;
+  $t->day_of_week;
+}
+
+sub Days_in_Month {
+  my($year, $month) = @_;
+  my $m_name = Encode_Month($month);
+  my $t = Time::Piece->strptime("1 $m_name, $year", "%d %B, %Y");
+  my $month_number = $t->_mon;
+  my $days = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)[$month_number];
+  $days + ($t->is_leap_year ? 1 : 0);
+}
+
+my %month_name_to_index;
+my %short_month_name_to_index;
+my @locale_short_months = map { lc(langinfo($_)) }
+    (ABMON_1, ABMON_2, ABMON_3, ABMON_4, ABMON_5, ABMON_6,
+     ABMON_7, ABMON_8, ABMON_9, ABMON_10, ABMON_11, ABMON_12);
+my @locale_months = map { lc(langinfo($_)) }
+    (MON_1, MON_2, MON_3, MON_4, MON_5, MON_6,
+     MON_7, MON_8, MON_9, MON_10, MON_11, MON_12);
+
+foreach my $i (1..12) {
+  $month_name_to_index{$locale_months[$i-1]}= $i;
+  $short_month_name_to_index{$locale_short_months[$i-1]}= $i;
+}
+my %index_to_month_name = reverse %month_name_to_index;
+my %index_to_short_month_name = reverse %short_month_name_to_index;
+
+sub Decode_Month {
+  my($name) = @_;
+  my $index = $month_name_to_index{$name} || $short_month_name_to_index{$name};
+  defined $index ? $index : -1;
+}
+
+sub Encode_Month {
+  my($index) = @_;
+  my $month = $index_to_month_name{$index} || $index_to_short_month_name{$index};
+  defined $month ? $month : die "Can't decode index $index to a month";
+}
 
 use constant GIBBERISH => -1;
 use constant AMBIGUOUS => -2;
@@ -24,11 +78,11 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw( parse_period) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( parse_period);
-our $VERSION = '0.17';
+our $VERSION = '0.50';
 
 $Date::PeriodParser::DEBUG = 0;
 
-our $TestTime; # This is set by our tests so we don't have to 
+our $TestTime; # This is set by our tests so we don't have to
                # dynamically figure out acceptable ranges for our test results
 
 my $roughly = qr/((?:a?round(?: about)?|about|roughly|circa|sometime)\s*)+/;
@@ -44,7 +98,7 @@ sub _debug {
 sub parse_period {
     local $_ = lc (shift // ''); # Since we're doing lots of regexps on it.
     my $now = $TestTime || time;
-    my ($s, $m, $h, $day, $mon, $year) = my @now = 
+    my ($s, $m, $h, $day, $mon, $year) = my @now =
         (localtime $now)[0..5];
 
     # Tidy slightly.
@@ -55,14 +109,14 @@ sub parse_period {
     # We also want to keep track of how vague the user's being, so we
     # provide a flexibility score - for instance "about two weeks ago"
     # means maybe three days either side, but "around last September"
-    # means perhaps twelve days either side. 
+    # means perhaps twelve days either side.
     my ($from, $to, $leeway);
     my $vague = s/^$roughly\s*//;
     _debug("this is a vague time");
-    
+
     # Stupid cases first.
     # "now": precisely now, or +/- 5 minutes if vague (e.g. "about now")
-    return _apply_leeway($now, $now, 300 * $vague) 
+    return _apply_leeway($now, $now, 300 * $vague)
         if /^now$/;
 
     if ($_ eq "" and $vague) { # Biggest range possible.
@@ -87,7 +141,7 @@ sub parse_period {
         # Monday at midnight and sunday just before midnight
         my @monday = ( Add_Delta_Days(@today, $monday - $today),  0,  0,  0 );
         my @sunday = ( Add_Delta_Days(@today, $sunday - $today), 23, 59, 59 );
-        
+
         return ( _timelocal(@monday), _timelocal(@sunday) );
     }
 
@@ -116,11 +170,14 @@ sub parse_period {
         my $month = $1;
         my $year  = $2;
 
-        if ( $month = Decode_Month($month) ) {
-            my @first = ( $year, $month, 1, 0, 0, 0 );   # first day at midnight
-            my $last_day_of_month = Days_in_Month( $year, $month );
-            my @last = ( $year, $month, $last_day_of_month, 23, 59, 59 );
-            return ( _timelocal(@first), _timelocal(@last) );
+        my $m_no = Decode_Month($month);
+        if ($m_no == -1) {
+          return(GIBBERISH, "Month '$month' doesn't exist in this locale.")
+        } else {
+          my @first = ( $year, $m_no, 1, 0, 0, 0 );   # first day at midnight
+          my $last_day_of_month = Days_in_Month( $year, $m_no );
+          my @last = ( $year, $m_no, $last_day_of_month, 23, 59, 59 );
+          return ( _timelocal(@first), _timelocal(@last) );
         }
     }
 
@@ -139,11 +196,11 @@ sub parse_period {
         if (/yesterday/)   { $day--; _debug("Back 1 day") }
         elsif (/tomorrow/) { $day++; _debug("Forward 1 day") }
 
-        # if it's later than the morning and the phrase is 
+        # if it's later than the morning and the phrase is
         # "in the morning", add a day.
         if ($h>12 and /in the morning$/) {$day++}
 
-        # if it's later than the afternoon and the phrase is 
+        # if it's later than the afternoon and the phrase is
         # "in the afternoon", add a day.
         elsif ($h>18 and /in the afternoon$/) {$day++}
 
@@ -163,78 +220,78 @@ sub parse_period {
     # days is currently supported.
     s/a (week|month|day|year)/one $1/g;
 
-    if (/^(.*) day(?:s)? ago$/ || /^in (.*) day(?:s)?(?: time)?$/ || 
+    if (/^(.*) day(?:s)? ago$/ || /^in (.*) day(?:s)?(?: time)?$/ ||
         /^(.*) day(?:s)? (?:away)?\s*(?:from now)?$/) {
         my $days = $1;
         {
-            local $_; 
+            local $_;
             # words2nums() trashes $_.
             $days = Lingua::EN::Words2Nums::words2nums($days);
         }
-        if (defined $days) { 
+        if (defined $days) {
             $days *= -1 if /ago/;
             _debug("Modifying day by $days");
             $day += $days;
             ($day, $mon, $year) = _zyprexa($day, $mon, $year);
-            ($from, $to, $leeway) = 
+            ($from, $to, $leeway) =
                 _period_or_all_day($day, $mon, $year, $now);
             return _apply_leeway($from, $to, $leeway * $vague);
         }
      }
 
-    if (/^(.*) week(?:s)? ago$/ || /^in (.*) week(?:s)?(?: time)?$/ || 
+    if (/^(.*) week(?:s)? ago$/ || /^in (.*) week(?:s)?(?: time)?$/ ||
         /^(.*) week(?:s)? (?:away)?\s*(?:from now)?$/) {
         my $weeks = $1;
         my $days;
         {
-            local $_; 
+            local $_;
             # words2nums() trashes $_.
             $days = 7 * Lingua::EN::Words2Nums::words2nums($weeks);
         }
-        if (defined $days) { 
+        if (defined $days) {
             $days *= -1 if /ago/;
             _debug("Modifying day by $days");
             $day += $days;
             ($day, $mon, $year) = _zyprexa($day, $mon, $year);
-            ($from, $to, $leeway) = 
+            ($from, $to, $leeway) =
                 _period_or_all_day($day, $mon, $year, $now);
             return _apply_leeway($from, $to, $leeway * $vague);
         }
      }
 
-    if (/^(.*) month(?:s)? ago$/ || /^in (.*) month(?:s)?(?: time)?$/ || 
+    if (/^(.*) month(?:s)? ago$/ || /^in (.*) month(?:s)?(?: time)?$/ ||
         /^(.*) month(?:s)? (?:away)?\s*(?:from now)?$/) {
         my $months = $1;
         {
-            local $_; 
+            local $_;
             # words2nums() trashes $_.
             $months = Lingua::EN::Words2Nums::words2nums($months);
         }
-        if (defined $months) { 
+        if (defined $months) {
             $months *= -1 if /ago/;
             _debug("Modifying month by $months");
             $mon += $months;
             ($day, $mon, $year) = _zyprexa($day, $mon, $year);
-            ($from, $to, $leeway) = 
+            ($from, $to, $leeway) =
                 _period_or_all_day($day, $mon, $year, $now);
             return _apply_leeway($from, $to, $leeway * $vague);
         }
      }
 
-    if (/^(.*) year(?:s)? ago$/ || /^in (.*) year(?:s)?(?: time)?$/ || 
+    if (/^(.*) year(?:s)? ago$/ || /^in (.*) year(?:s)?(?: time)?$/ ||
         /^(.*) year(?:s)? (?:away)?\s*(?:from now)?$/) {
         my $years = $1;
         {
-            local $_; 
+            local $_;
             # words2nums() trashes $_.
             $years = Lingua::EN::Words2Nums::words2nums($years);
         }
-        if (defined $years) { 
+        if (defined $years) {
             $years *= -1 if /ago/;
             _debug("Modifying year by $years");
             $year += $years;
             ($day, $mon, $year) = _zyprexa($day, $mon, $year);
-            ($from, $to, $leeway) = 
+            ($from, $to, $leeway) =
                 _period_or_all_day($day, $mon, $year, $now);
             return _apply_leeway($from, $to, $leeway * $vague);
         }
@@ -278,12 +335,12 @@ my %points_of_day = (
                  ]
 );
 
-# _apply_point_of_day takes the word specifying the portion of the 
+# _apply_point_of_day takes the word specifying the portion of the
 # day and transforms it into a range of hours.
 
 sub _apply_point_of_day {
     my ($d, $m, $y, $point) = @_;
-    my ($from, $to); 
+    my ($from, $to);
     if ($point eq "night") { # Special case
         # Nights are a special case because they run over the
         # day boundary. (9PM to 5:59:59AM the next day).
@@ -377,7 +434,7 @@ sub _today {
     return ($year, $month, $day);
 }
 
-# Our date math can lead to days or months out of range, so we need to get 
+# Our date math can lead to days or months out of range, so we need to get
 # them back to something sane before we pass them to any of the date functions.
 # (Zyprexa is an anti-psychotic.)
 sub _zyprexa {
@@ -441,8 +498,8 @@ Date::PeriodParser - Turns English descriptions into time periods
 =head1 DESCRIPTION
 
 C<Date::PeriodParser> provides a means of interpreting vague descriptions
-of dates as actual, meaningful date values by taking a shot at 
-interpreting the meaning of the supplied descriptive phrase, 
+of dates as actual, meaningful date values by taking a shot at
+interpreting the meaning of the supplied descriptive phrase,
 generating a best-guess before-and-after estimate of the time period described.
 
 =head1 ROUTINES
@@ -507,7 +564,7 @@ ambiguous", and the explanation will tell you how to disambiguate it.
 
 =head1 DEPENDENCIES
 
-=over 
+=over
 
 =item * Lingua::EN::Words2Nums
 
@@ -523,12 +580,12 @@ Used to do all that messy date math.
 
 =head1 BUGS
 
-=over 
+=over
 
 =item * Parsing is limited. Some relatively complicated things work fine, but some simple things do not.
 
-=item * The time-of-day words ("morning", "afternoon", "evening", "night", and 
-"lunchtime") should accept relative modifiers (e.g., "lunchtime tomorrow", 
+=item * The time-of-day words ("morning", "afternoon", "evening", "night", and
+"lunchtime") should accept relative modifiers (e.g., "lunchtime tomorrow",
 "yesterday evening"), but don't.
 
 =item * The API is much too C-like. We should probably throw a structured exception instead of returning a failure code.
